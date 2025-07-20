@@ -1,0 +1,47 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8888:8888"
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_USER: admin
+      DB_PASSWORD: admin
+      DB_NAME: rinha
+    networks:
+      - rinha-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+          cpus: "1.0"
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: rinha
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    volumes:
+      - ./db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - rinha-net
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 100M
+          cpus: "0.5"
+
+volumes:
+  pgdata:
+
+networks:
+  rinha-net:
+    driver: bridge
