@@ -1,6 +1,7 @@
 services:
-  api-threshold-low:
-    container_name: api-threshold-low
+  api1:
+    hostname: api1
+    container_name: api1
     build: .
     depends_on:
       - db
@@ -9,28 +10,32 @@ services:
       DB_USER: admin
       DB_PASSWORD: admin
       DB_NAME: rinha
-      SCREENING_BUFFER: 20
-      SCREENING_WORKERS: 4
-      HIGH_PRIORITY_BUFFER: 10
-      HIGH_PRIORITY_WORKERS: 5
+      SCREENING_BUFFER: 40
+      SCREENING_WORKERS: 5
+      HIGH_PRIORITY_BUFFER: 15
+      HIGH_PRIORITY_WORKERS: 8
       LOW_PRIORITY_BUFFER: 20
-      LOW_PRIORITY_WORKERS: 10
-      LOW_WAITING_BUFFER: 30
-      LOW_WAITING_WORKERS: 20
-      HIGH_WAITING_BUFFER: 20
-      HIGH_WAITING_WORKERS: 10
-      K_FACTOR: 0.8
+      LOW_PRIORITY_WORKERS: 12
+      WAITING_BUFFER: 100
+      WAITING_WORKERS: 20
+      K_FACTOR: 0.7
+      LIMIT_TIME_HEALTH: 3
+      DEFAULT_URL: http://payment-processor-default:8080
+      FALLBACK_URL: http://payment-processor-fallback:8080
+      WAITING_ROOM_SLEEP_TIME: 400ms
     networks:
       - rinha-back
+      - payment-processor
     restart: unless-stopped
     deploy:
       resources:
         limits:
-          memory: 105M
+          memory: "110MB"
           cpus: "0.5"
 
-  api-threshold-high:
-    container_name: api-threshold-high
+  api2:
+    hostname: api2
+    container_name: api2
     build: .
     depends_on:
       - db
@@ -39,28 +44,31 @@ services:
       DB_USER: admin
       DB_PASSWORD: admin
       DB_NAME: rinha
-      SCREENING_BUFFER: 9
-      SCREENING_WORKERS: 3
-      HIGH_PRIORITY_BUFFER: 6
-      HIGH_PRIORITY_WORKERS: 4
-      LOW_PRIORITY_BUFFER: 8
-      LOW_PRIORITY_WORKERS: 3
-      LOW_WAITING_BUFFER: 10
-      LOW_WAITING_WORKERS: 9
-      HIGH_WAITING_BUFFER: 12
-      HIGH_WAITING_WORKERS: 5
-      K_FACTOR: 1.4
+      SCREENING_BUFFER: 40
+      SCREENING_WORKERS: 5
+      HIGH_PRIORITY_BUFFER: 15
+      HIGH_PRIORITY_WORKERS: 8
+      LOW_PRIORITY_BUFFER: 20
+      LOW_PRIORITY_WORKERS: 12
+      WAITING_BUFFER: 100
+      WAITING_WORKERS: 20
+      K_FACTOR: 0.7
+      LIMIT_TIME_HEALTH: 3
+      DEFAULT_URL: http://payment-processor-default:8080
+      FALLBACK_URL: http://payment-processor-fallback:8080
+      WAITING_ROOM_SLEEP_TIME: 400ms
     networks:
       - rinha-back
+      - payment-processor
     restart: unless-stopped
     deploy:
       resources:
         limits:
-          memory: 45M
-          cpus: "0.2"     
+          memory: "110MB"
+          cpus: "0.5"     
                
   db:
-    container_name: storage
+    hostname: storage
     image: postgres:15-alpine
     environment:
       POSTGRES_DB: rinha
@@ -71,6 +79,7 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - rinha-back
+      - payment-processor
     ports:
       - "5432:5432"
     restart: unless-stopped
@@ -88,8 +97,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 100M
-          cpus: "0.5"
+          memory: "100MB"
+          cpus: "0.4"
 
   nginx:
     image: nginx:alpine
@@ -99,15 +108,16 @@ services:
     ports:
       - "9999:9999"
     depends_on:
-      - api-threshold-low
-      - api-threshold-high
+      - api1
+      - api2
     deploy:
       resources:
         limits:
-          cpus: '0.3'
+          cpus: '0.1'
           memory: "30MB"
     networks:
       - rinha-back
+      - payment-processor
 
 volumes:
   pgdata:

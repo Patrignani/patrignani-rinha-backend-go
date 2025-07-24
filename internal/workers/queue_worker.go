@@ -10,7 +10,6 @@ import (
 )
 
 type Message struct {
-	Id                      string
 	CorrelationId           string
 	Amount                  decimal.Decimal
 	EnqueueAt               time.Time
@@ -44,7 +43,7 @@ func (q *QueueWorkerImp) Send(msg Message) {
 		q.mu.Lock()
 		q.fallback = append(q.fallback, msg)
 		q.mu.Unlock()
-		fmt.Println("Fila cheia, mensagem salva no fallback:", msg.Id)
+		fmt.Println("Fila cheia, mensagem salva no fallback:", msg.CorrelationId)
 	}
 }
 
@@ -57,7 +56,7 @@ func (q *QueueWorkerImp) RetryFallback() {
 	for _, msg := range q.fallback {
 		select {
 		case q.channel <- msg:
-			fmt.Println("Mensagem reprocessada do fallback:", msg.Id)
+			fmt.Println("Mensagem reprocessada do fallback:", msg.CorrelationId)
 		default:
 			newFallback = append(newFallback, msg)
 		}
@@ -91,7 +90,7 @@ func (q *QueueWorkerImp) Consume(ctx context.Context, workers int, process func(
 				defer wg.Done()
 				defer func() { <-sem }()
 				if err := process(ctx, m); err != nil {
-					fmt.Printf("Erro ao processar mensagem %s: %v\n", m.Id, err)
+					fmt.Printf("Erro ao processar mensagem %s: %v\n", m.CorrelationId, err)
 				}
 			}(msg)
 		}

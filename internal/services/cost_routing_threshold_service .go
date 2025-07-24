@@ -23,12 +23,12 @@ type CostRoutingThresholdService interface {
 }
 
 type CostRoutingThresholdServiceImp struct {
-	memoryCache cache.CostRoutingThresholdCache
+	memoryCache cache.AtomicCache
 	pg          storage.PostgresClient
 	kFactor     decimal.Decimal
 }
 
-func NewCostRoutingThresholdService(memoryCache cache.CostRoutingThresholdCache, pg storage.PostgresClient, kFactor float32) CostRoutingThresholdService {
+func NewCostRoutingThresholdService(memoryCache cache.AtomicCache, pg storage.PostgresClient, kFactor float32) CostRoutingThresholdService {
 	return &CostRoutingThresholdServiceImp{
 		memoryCache: memoryCache,
 		kFactor:     decimal.NewFromFloat32(kFactor),

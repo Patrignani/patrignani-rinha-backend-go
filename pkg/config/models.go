@@ -1,14 +1,19 @@
 package config
 
+import "time"
+
 type Environment struct {
 	Postgres             Postgres
-	StartPort            string `env:"START_PORT,default=9999"`
+	StartPort            string `env:"START_PORT,default=8080"`
 	ScreeningQueue       QueueScreening
 	HighPriorityQueue    QueueHighPriority
 	LowPriorityQueue     QueueLowPriority
-	LowWaitingRoomQueue  QueueLowWaiting
-	HighWaitingRoomQueue QueueHighWaiting
-	KFactor              float32 `env:"K_FACTOR"`
+	WaitingRoomQueue     QueueLowWaiting
+	KFactor              float32       `env:"K_FACTOR"`
+	LimitTimeHealth      int           `env:"LIMIT_TIME_HEALTH"`
+	WaitingRoomSleepTime time.Duration `env:"WAITING_ROOM_SLEEP_TIME"`
+	DefaultUrl           string        `env:"DEFAULT_URL"`
+	FallbackUrl          string        `env:"FALLBACK_URL"`
 }
 
 type Postgres struct {
@@ -35,11 +40,6 @@ type QueueLowPriority struct {
 }
 
 type QueueLowWaiting struct {
-	Buffer  int `env:"LOW_WAITING_BUFFER"`
-	Workers int `env:"LOW_WAITING_WORKERS"`
-}
-
-type QueueHighWaiting struct {
-	Buffer  int `env:"HIGH_WAITING_BUFFER"`
-	Workers int `env:"HIGH_WAITING_WORKERS"`
+	Buffer  int `env:"WAITING_BUFFER"`
+	Workers int `env:"WAITING_WORKERS"`
 }
