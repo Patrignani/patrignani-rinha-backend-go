@@ -2,23 +2,22 @@ package services
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Patrignani/patrignani-rinha-backend-go/internal/workers"
 	"github.com/Patrignani/patrignani-rinha-backend-go/pkg/cache"
 )
 
 type ScreeningService interface {
-	Redirect(ctx context.Context, msg workers.Message[any]) error
+	Redirect(ctx context.Context, msg workers.Message) error
 }
 
 type ScreeningServiceImp struct {
 	memoryCache       cache.CostRoutingThresholdCache
-	highPriorityQueue workers.QueueWorker[any]
-	lowPriorityQueue  workers.QueueWorker[any]
+	highPriorityQueue workers.QueueWorker
+	lowPriorityQueue  workers.QueueWorker
 }
 
-func NewScreeningService(memoryCache cache.CostRoutingThresholdCache, highPriorityQueue workers.QueueWorker[any], lowPriorityQueue workers.QueueWorker[any]) ScreeningService {
+func NewScreeningService(memoryCache cache.CostRoutingThresholdCache, highPriorityQueue workers.QueueWorker, lowPriorityQueue workers.QueueWorker) ScreeningService {
 	return &ScreeningServiceImp{
 		memoryCache:       memoryCache,
 		highPriorityQueue: highPriorityQueue,
@@ -26,21 +25,16 @@ func NewScreeningService(memoryCache cache.CostRoutingThresholdCache, highPriori
 	}
 }
 
-func (s *ScreeningServiceImp) Redirect(ctx context.Context, msg workers.Message[any]) error {
+func (s *ScreeningServiceImp) Redirect(ctx context.Context, msg workers.Message) error {
 
 	threshold := s.memoryCache.Get()
 
-	value, ok := msg.Object.(float64)
-	if !ok {
-		return fmt.Errorf("valor inválido, esperado float64, recebido: %T", msg.Value)
-	}
-
-	if value > threshold {
-		s.lowPriorityQueue.Send(value)
+	if msg.Amount.Cmp(threshold) == 1 {
+		s.lowPriorityQueue.Send(msg)
 		return nil
 	}
 
-	s.highPriorityQueue.Send(value)
+	s.highPriorityQueue.Send(msg)
 
 	return nil
 }

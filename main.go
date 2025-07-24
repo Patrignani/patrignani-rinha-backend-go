@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
+	"log"
+	"net"
 	"time"
 
 	"github.com/Patrignani/patrignani-rinha-backend-go/internal/services"
 	"github.com/Patrignani/patrignani-rinha-backend-go/internal/workers"
 	"github.com/Patrignani/patrignani-rinha-backend-go/pkg/cache"
+	"github.com/Patrignani/patrignani-rinha-backend-go/pkg/config"
 	"github.com/Patrignani/patrignani-rinha-backend-go/pkg/storage"
 	"github.com/gofiber/fiber/v2"
 )
@@ -25,17 +27,17 @@ func main() {
 		panic("erro ao iniciar o banco")
 	}
 
-	screening := workers.NewQueueWorker[any](15000)
-	highPriority := workers.NewQueueWorker[any](5000)
-	lowPriority := workers.NewQueueWorker[any](10000)
-	lowWaitingRoom := workers.NewQueueWorker[any](50000)
-	highWaitingRoom := workers.NewQueueWorker[any](40000)
+	screening := workers.NewQueueWorker(config.Env.ScreeningQueue.Buffer)
+	highPriority := workers.NewQueueWorker(config.Env.HighPriorityQueue.Buffer)
+	lowPriority := workers.NewQueueWorker(config.Env.LowPriorityQueue.Buffer)
+	lowWaitingRoom := workers.NewQueueWorker(config.Env.LowWaitingRoomQueue.Buffer)
+	highWaitingRoom := workers.NewQueueWorker(config.Env.HighWaitingRoomQueue.Buffer)
 
-	costRoutingThresholdService := services.NewCostRoutingThresholdService(atomicCache, pg)
+	costRoutingThresholdService := services.NewCostRoutingThresholdService(atomicCache, pg, config.Env.KFactor)
 	screeningService := services.NewScreeningService(atomicCache, highPriority, lowPriority)
 
 	workers.StartWorker(ctx, "threshold", 5*time.Second, costRoutingThresholdService.Calculation)
-	workers.StartWorker(ctx, "RetryFallback", 15*time.Second, func(ctx context.Context) error {
+	workers.StartWorker(ctx, "retryFallback", 15*time.Second, func(ctx context.Context) error {
 
 		if screening.CountFallback() > 0 {
 			screening.RetryFallback()
@@ -60,7 +62,7 @@ func main() {
 		return nil
 	})
 
-	screening.Consume(ctx, 150, screeningService.Redirect)
+	screening.Consume(ctx, config.Env.ScreeningQueue.Workers, screeningService.Redirect)
 
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -69,20 +71,27 @@ func main() {
 		})
 	})
 
-	app.Listen(":8888")
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%s", config.Env.StartPort))
+	if err != nil {
+		log.Fatalf("erro ao criar listener: %v", err)
+	}
+
+	log.Printf(`
+
+╔════════════════════════════════════════════════════╗
+║ 🚀 Servidor Fiber iniciado com sucesso!            ║
+║ 📡 Escutando em: http://%s             ║
+╚════════════════════════════════════════════════════╝
+`, ln.Addr().String())
+
+	if err := app.Listener(ln); err != nil {
+		log.Fatalf("erro ao iniciar servidor: %v", err)
+	}
 }
 
 func getPostgresDSN() string {
-	host := os.Getenv("DB_HOST")
-	user := os.Getenv("DB_USER")
-	password := os.Getenv("DB_PASSWORD")
-	dbname := os.Getenv("DB_NAME")
-	port := os.Getenv("DB_PORT")
 
-	if port == "" {
-		port = "5432"
-	}
-	println(fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", user, password, host, port, dbname))
+	println(fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", config.Env.Postgres.User, config.Env.Postgres.Pass, config.Env.Postgres.Host, config.Env.Postgres.PORT, config.Env.Postgres.Name))
 
-	return fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", user, password, host, port, dbname)
+	return fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", config.Env.Postgres.User, config.Env.Postgres.Pass, config.Env.Postgres.Host, config.Env.Postgres.PORT, config.Env.Postgres.Name)
 }

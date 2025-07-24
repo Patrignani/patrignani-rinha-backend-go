@@ -3,8 +3,10 @@ module github.com/Patrignani/patrignani-rinha-backend-go
 go 1.24.1
 
 require (
+	github.com/Netflix/go-env v0.1.2
 	github.com/gofiber/fiber/v2 v2.52.9
 	github.com/jackc/pgx/v5 v5.7.5
+	github.com/shopspring/decimal v1.4.0
 )
 
 require (

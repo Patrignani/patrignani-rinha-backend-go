@@ -4,60 +4,69 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
+
+	"github.com/shopspring/decimal"
 )
 
-type Message[T any] struct {
-	Id     string
-	Object T
+type Message struct {
+	Id                      string
+	CorrelationId           string
+	Amount                  decimal.Decimal
+	EnqueueAt               time.Time
+	ReprocessedHowManyTimes int
 }
 
-type QueueWorker[T any] interface {
-	Send(msg Message[T])
+type QueueWorker interface {
+	Send(msg Message)
 	RetryFallback()
-	Consume(ctx context.Context, workers int, process func(context.Context, Message[T]) error)
+	Consume(ctx context.Context, workers int, process func(context.Context, Message) error)
 	CountFallback() int
 }
 
-type QueueWorkerImp[T any] struct {
-	channel  chan Message[T]
-	fallback map[string]Message[T]
+type QueueWorkerImp struct {
+	channel  chan Message
+	fallback []Message
 	mu       sync.Mutex
 }
 
-func NewQueueWorker[T any](buffer int) QueueWorker[T] {
-	return &QueueWorkerImp[T]{
-		channel:  make(chan Message[T], buffer),
-		fallback: make(map[string]Message[T]),
+func NewQueueWorker(buffer int) QueueWorker {
+	return &QueueWorkerImp{
+		channel:  make(chan Message, buffer),
+		fallback: []Message{},
 	}
 }
 
-func (q *QueueWorkerImp[T]) Send(msg Message[T]) {
+func (q *QueueWorkerImp) Send(msg Message) {
 	select {
 	case q.channel <- msg:
 	default:
 		q.mu.Lock()
-		q.fallback[msg.Id] = msg
+		q.fallback = append(q.fallback, msg)
 		q.mu.Unlock()
 		fmt.Println("Fila cheia, mensagem salva no fallback:", msg.Id)
 	}
 }
 
-func (q *QueueWorkerImp[T]) RetryFallback() {
+func (q *QueueWorkerImp) RetryFallback() {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	for id, msg := range q.fallback {
+	newFallback := q.fallback[:0]
+
+	for _, msg := range q.fallback {
 		select {
 		case q.channel <- msg:
-			delete(q.fallback, id)
-			fmt.Println("Mensagem reprocessada do fallback:", id)
+			fmt.Println("Mensagem reprocessada do fallback:", msg.Id)
 		default:
-			return
+			newFallback = append(newFallback, msg)
 		}
 	}
+
+	q.fallback = newFallback
 }
 
-func (q *QueueWorkerImp[T]) Consume(ctx context.Context, workers int, process func(context.Context, Message[T]) error) {
+func (q *QueueWorkerImp) Consume(ctx context.Context, workers int, process func(context.Context, Message) error) {
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, workers)
 
@@ -78,7 +87,7 @@ func (q *QueueWorkerImp[T]) Consume(ctx context.Context, workers int, process fu
 			sem <- struct{}{}
 			wg.Add(1)
 
-			go func(m Message[T]) {
+			go func(m Message) {
 				defer wg.Done()
 				defer func() { <-sem }()
 				if err := process(ctx, m); err != nil {
@@ -89,6 +98,6 @@ func (q *QueueWorkerImp[T]) Consume(ctx context.Context, workers int, process fu
 	}
 }
 
-func (q *QueueWorkerImp[T]) CountFallback() int {
+func (q *QueueWorkerImp) CountFallback() int {
 	return len(q.fallback)
 }

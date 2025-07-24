@@ -12,13 +12,13 @@ RUN go build -ldflags="-s -w" -o main
 # Stage 2: Runtime
 FROM gcr.io/distroless/static:nonroot
 
-WORKDIR /root/
+WORKDIR /app
 
 COPY --from=builder /app/main .
 
-ENV PORT=8888
-EXPOSE 8888
+ENV PORT=9999
+EXPOSE 9999
+
 USER nonroot
 
-# Entrypoint
 CMD ["./main"]
