@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 
@@ -36,26 +37,29 @@ func NewCostRoutingThresholdService(memoryCache cache.CostRoutingThresholdCache,
 }
 
 func (c *CostRoutingThresholdServiceImp) Calculation(ctx context.Context) error {
-	var avg, stddev float64
+	var avg, stddev sql.NullFloat64
 	var count int64
-	println(buildCostRoutingThreshold())
+
 	err := c.pg.QueryRow(ctx, buildCostRoutingThreshold()).Scan(&avg, &stddev, &count)
 	if err != nil {
 		return fmt.Errorf("erro ao executar query no Postgres: %w", err)
 	}
 
-	if count < 10 {
-		log.Printf("Registros insuficientes (%d < 10): pulando cálculo de threshold", count)
+	if count < 10 || !avg.Valid || !stddev.Valid {
+		log.Printf("Registros insuficientes ou dados inválidos: count=%d, avg valid=%v, stddev valid=%v",
+			count, avg.Valid, stddev.Valid)
 		return nil
 	}
 
-	avgDecimal := decimal.NewFromFloat(avg)
-	stddevDecimal := decimal.NewFromFloat(stddev)
+	avgDecimal := decimal.NewFromFloat(avg.Float64)
+	stddevDecimal := decimal.NewFromFloat(stddev.Float64)
 
 	threshold := avgDecimal.Sub(c.kFactor.Mul(stddevDecimal))
 
 	c.memoryCache.Set(threshold)
 
-	log.Printf("Threshold atualizado: registros=%d μ=%s σ=%s → threshold=%s", count, avgDecimal.String(), stddevDecimal.String(), threshold.String())
+	log.Printf("Threshold atualizado: registros=%d μ=%s σ=%s → threshold=%s",
+		count, avgDecimal.String(), stddevDecimal.String(), threshold.String())
+
 	return nil
 }

@@ -1,7 +1,7 @@
 CREATE UNLOGGED TABLE entry_history (
 	correlationId UUID PRIMARY KEY,
 	amount DECIMAL NOT NULL,
-	fallback BOOLEAN NOT NULL DEFAULT TRUE
+	fallback BOOLEAN NOT NULL DEFAULT TRUE,
 	created_at TIMESTAMP NOT NULL
 );
 
