@@ -32,17 +32,17 @@ func (s *ScreeningServiceImp) Redirect(ctx context.Context, msg workers.Message)
 
 	defaultStatusFail, fallbackStatusFail := s.memoryCache.GetHealthAPIs()
 
-	if defaultStatusFail && fallbackStatusFail {
+	if !defaultStatusFail && !fallbackStatusFail {
 		s.calcRedirect(msg)
 		return nil
 	}
 
-	if !defaultStatusFail && fallbackStatusFail {
+	if defaultStatusFail && !fallbackStatusFail {
 		s.highPriorityQueue.Send(msg)
 		return nil
 	}
 
-	if defaultStatusFail && !fallbackStatusFail {
+	if !defaultStatusFail && fallbackStatusFail {
 		s.lowPriorityQueue.Send(msg)
 		return nil
 	}

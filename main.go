@@ -29,7 +29,7 @@ func main() {
 		panic("erro ao iniciar o banco")
 	}
 
-	atomicCache.SetHealthAPIs(true, true)
+	atomicCache.SetHealthAPIs(false, false)
 
 	httpClient := clients.NewHttpRequest()
 
@@ -45,7 +45,11 @@ func main() {
 	paymentServer := services.NewPaymentService(httpClient, waitingRoom)
 
 	workers.StartWorker(ctx, "threshold", 5*time.Second, costRoutingThresholdService.Calculation)
-	workers.StartWorker(ctx, "healthCheckPayment", 5*time.Second+300*time.Millisecond, checkHealt.SetStatusPayment)
+
+	if config.Env.EnableCheckHealthCheck {
+		workers.StartWorker(ctx, "healthCheckPayment", 5*time.Second+300*time.Millisecond, checkHealt.SetStatusPayment)
+	}
+
 	workers.StartWorker(ctx, "retryFallback", 10*time.Second, func(ctx context.Context) error {
 
 		if screening.CountFallback() > 0 {

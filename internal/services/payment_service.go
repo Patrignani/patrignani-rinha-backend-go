@@ -68,7 +68,7 @@ func (p *PaymentServiceImp) postPayment(ctx context.Context, msg workers.Message
 		log.Fatal("Erro ao serializar o corpo:", err)
 	}
 
-	_, err = clients.Do[any](p.httpRequest, clients.RequestParams{
+	resp, err := clients.Do[any](p.httpRequest, clients.RequestParams{
 		Method: "POST",
 		URL:    url,
 		Headers: map[string]string{
@@ -77,6 +77,10 @@ func (p *PaymentServiceImp) postPayment(ctx context.Context, msg workers.Message
 		Body: bodyBytes,
 		Ctx:  ctx,
 	}, nil)
+
+	if err != nil && resp.StatusCode == 422 {
+		err = nil
+	}
 
 	return err
 }

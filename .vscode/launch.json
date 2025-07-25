@@ -27,7 +27,7 @@
         "HIGH_WAITING_BUFFER": "20",
         "HIGH_WAITING_WORKERS": "10",
         "DEFAULT_URL": "http://localhost:8001",
-        "FALLBACK_URL": "http://localhost:8001"
+        "FALLBACK_URL": "http://localhost:8002"
       },
         }
     ]
