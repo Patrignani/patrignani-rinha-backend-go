@@ -9,12 +9,12 @@ type Environment struct {
 	HighPriorityQueue      QueueHighPriority
 	LowPriorityQueue       QueueLowPriority
 	WaitingRoomQueue       QueueLowWaiting
-	KFactor                float32       `env:"K_FACTOR"`
 	LimitTimeHealth        int           `env:"LIMIT_TIME_HEALTH"`
 	WaitingRoomSleepTime   time.Duration `env:"WAITING_ROOM_SLEEP_TIME"`
 	DefaultUrl             string        `env:"DEFAULT_URL"`
 	FallbackUrl            string        `env:"FALLBACK_URL"`
 	EnableCheckHealthCheck bool          `env:"ENABLE_CHECK_HEALTH_CHECK"`
+	CalcRedirect           int           `env:"CALC_REDIRECT_CHANCE"`
 }
 
 type Postgres struct {

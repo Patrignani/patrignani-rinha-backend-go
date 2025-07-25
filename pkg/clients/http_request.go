@@ -22,8 +22,8 @@ type RequestParams struct {
 func NewHttpRequest() *http.Client {
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
-			Timeout:   3 * time.Second,
-			KeepAlive: 15 * time.Second,
+			Timeout:   6 * time.Second,
+			KeepAlive: 16 * time.Second,
 		}).DialContext,
 
 		MaxIdleConns:        256,
@@ -39,7 +39,7 @@ func NewHttpRequest() *http.Client {
 	}
 
 	return &http.Client{
-		Timeout:   3 * time.Second,
+		Timeout:   6 * time.Second,
 		Transport: transport,
 	}
 }

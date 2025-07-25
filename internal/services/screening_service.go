@@ -29,21 +29,16 @@ func NewScreeningService(memoryCache cache.AtomicCache, highPriorityQueue worker
 }
 
 func (s *ScreeningServiceImp) Redirect(ctx context.Context, msg workers.Message) error {
+	defaultStatusFail := s.memoryCache.GetHealthDeafultApi()
+	fallbackStatusFail := s.memoryCache.GetHealthFallbackApi()
 
-	defaultStatusFail, fallbackStatusFail := s.memoryCache.GetHealthAPIs()
-
-	if !defaultStatusFail && !fallbackStatusFail {
-		s.calcRedirect(msg)
-		return nil
-	}
-
-	if defaultStatusFail && !fallbackStatusFail {
-		s.highPriorityQueue.Send(msg)
-		return nil
-	}
-
-	if !defaultStatusFail && fallbackStatusFail {
+	if !defaultStatusFail {
 		s.lowPriorityQueue.Send(msg)
+		return nil
+	}
+
+	if !fallbackStatusFail {
+		s.highPriorityQueue.Send(msg)
 		return nil
 	}
 
@@ -59,7 +54,7 @@ func (s *ScreeningServiceImp) Redirect(ctx context.Context, msg workers.Message)
 		randValue := rand.Intn(100)
 
 		if randValue < chance {
-			s.calcRedirect(msg)
+			s.calcRedirect(msg, 50)
 			return nil
 		}
 	}
@@ -69,13 +64,54 @@ func (s *ScreeningServiceImp) Redirect(ctx context.Context, msg workers.Message)
 	return nil
 }
 
-func (s *ScreeningServiceImp) calcRedirect(msg workers.Message) {
-	threshold := s.memoryCache.Get()
+// func (s *ScreeningServiceImp) Redirect(ctx context.Context, msg workers.Message) error {
+// 	defaultStatusFail := s.memoryCache.GetHealthDeafultApi()
+// 	fallbackStatusFail := s.memoryCache.GetHealthFallbackApi()
 
-	if msg.Amount.Cmp(threshold) == 1 {
-		s.lowPriorityQueue.Send(msg)
+// 	if !defaultStatusFail && !fallbackStatusFail {
+// 		s.calcRedirect(msg, config.Env.CalcRedirect)
+// 		return nil
+// 	}
+
+// 	if defaultStatusFail && !fallbackStatusFail {
+// 		s.highPriorityQueue.Send(msg)
+// 		return nil
+// 	}
+
+// 	if !defaultStatusFail && fallbackStatusFail {
+// 		s.lowPriorityQueue.Send(msg)
+// 		return nil
+// 	}
+
+// 	if msg.ReprocessedHowManyTimes > 0 {
+// 		baseChance := 30
+// 		increment := 10
+// 		chance := baseChance + increment*msg.ReprocessedHowManyTimes
+
+// 		if chance > 80 {
+// 			chance = 80
+// 		}
+
+// 		randValue := rand.Intn(100)
+
+// 		if randValue < chance {
+// 			s.calcRedirect(msg, 50)
+// 			return nil
+// 		}
+// 	}
+
+// 	s.waitingRoom.Send(msg)
+
+// 	return nil
+// }
+
+func (s *ScreeningServiceImp) calcRedirect(msg workers.Message, chance int) {
+	randValue := rand.Intn(100)
+
+	if randValue < chance {
+		s.highPriorityQueue.Send(msg)
 		return
 	}
 
-	s.highPriorityQueue.Send(msg)
+	s.lowPriorityQueue.Send(msg)
 }

@@ -7,6 +7,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/Patrignani/patrignani-rinha-backend-go/internal/repositories"
 	"github.com/Patrignani/patrignani-rinha-backend-go/internal/services"
 	"github.com/Patrignani/patrignani-rinha-backend-go/internal/workers"
 	"github.com/Patrignani/patrignani-rinha-backend-go/pkg/cache"
@@ -28,29 +29,30 @@ func main() {
 	if err != nil {
 		panic("erro ao iniciar o banco")
 	}
+	defer pg.Close()
 
-	atomicCache.SetHealthAPIs(false, false)
+	atomicCache.SetHealthDeafultApi(false)
+	atomicCache.SetHealthFallbackApi(false)
 
 	httpClient := clients.NewHttpRequest()
+
+	paymentRepo := repositories.NewPaymentRepository(pg)
 
 	screening := workers.NewQueueWorker(config.Env.ScreeningQueue.Buffer)
 	highPriority := workers.NewQueueWorker(config.Env.HighPriorityQueue.Buffer)
 	lowPriority := workers.NewQueueWorker(config.Env.LowPriorityQueue.Buffer)
 	waitingRoom := workers.NewQueueWorker(config.Env.WaitingRoomQueue.Buffer)
 
-	costRoutingThresholdService := services.NewCostRoutingThresholdService(atomicCache, pg, config.Env.KFactor)
 	screeningService := services.NewScreeningService(atomicCache, highPriority, lowPriority, waitingRoom)
 	checkHealt := services.NewCheckHealthPaymentService(httpClient, atomicCache)
 	waitServer := services.NewWaitingRoomServer(screening)
-	paymentServer := services.NewPaymentService(httpClient, waitingRoom)
-
-	workers.StartWorker(ctx, "threshold", 5*time.Second, costRoutingThresholdService.Calculation)
+	paymentServer := services.NewPaymentService(httpClient, waitingRoom, atomicCache, paymentRepo)
 
 	if config.Env.EnableCheckHealthCheck {
 		workers.StartWorker(ctx, "healthCheckPayment", 5*time.Second+300*time.Millisecond, checkHealt.SetStatusPayment)
 	}
 
-	workers.StartWorker(ctx, "retryFallback", 10*time.Second, func(ctx context.Context) error {
+	workers.StartWorker(ctx, "retryFallback", 100*time.Millisecond, func(ctx context.Context) error {
 
 		if screening.CountFallback() > 0 {
 			screening.RetryFallback()
@@ -99,9 +101,49 @@ func main() {
 			Amount:        payload.Amount,
 			EnqueueAt:     time.Now().UTC(),
 		})
-		return c.Status(fiber.StatusOK).JSON(fiber.Map{
-			"status":  "ok",
-			"message": "Pagamento recebido com sucesso",
+
+		return c.SendStatus(fiber.StatusOK)
+	})
+
+	app.Get("/payments-summary", func(c *fiber.Ctx) error {
+		fromStr := c.Query("from")
+		toStr := c.Query("to")
+
+		var fromTime, toTime time.Time
+		var err error
+
+		if fromStr != "" {
+			fromTime, err = time.Parse(time.RFC3339, fromStr)
+			if err != nil {
+				return fiber.NewError(fiber.StatusBadRequest, "invalid 'from' timestamp format")
+			}
+		}
+
+		if toStr != "" {
+			toTime, err = time.Parse(time.RFC3339, toStr)
+			if err != nil {
+				return fiber.NewError(fiber.StatusBadRequest, "invalid 'to' timestamp format")
+			}
+		}
+
+		summary, err := paymentRepo.GetPaymentSummary(ctx, &fromTime, &toTime)
+		if err != nil {
+			return fiber.NewError(fiber.StatusBadRequest, "error get summary")
+		}
+
+		return c.Status(fiber.StatusOK).JSON(summary)
+	})
+
+	app.Delete("/purge", func(c *fiber.Ctx) error {
+		ctx := context.Background()
+		err := paymentRepo.PurgeAll(ctx)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"error": "Falha ao deletar dados: " + err.Error(),
+			})
+		}
+		return c.JSON(fiber.Map{
+			"message": "Todos os dados da tabela entry_history foram deletados.",
 		})
 	})
 
@@ -124,8 +166,5 @@ func main() {
 }
 
 func getPostgresDSN() string {
-
-	println(fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", config.Env.Postgres.User, config.Env.Postgres.Pass, config.Env.Postgres.Host, config.Env.Postgres.PORT, config.Env.Postgres.Name))
-
 	return fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", config.Env.Postgres.User, config.Env.Postgres.Pass, config.Env.Postgres.Host, config.Env.Postgres.PORT, config.Env.Postgres.Name)
 }

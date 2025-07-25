@@ -9,14 +9,13 @@ import (
 var zero = decimal.Zero
 
 type AtomicCache interface {
-	Set(value decimal.Decimal)
-	Get() decimal.Decimal
-	SetHealthAPIs(defaultAPIOn, fallbackAPIOn bool)
-	GetHealthAPIs() (defaultAPIOn, fallbackAPIOn bool)
+	SetHealthDeafultApi(defaultAPIOn bool)
+	GetHealthDeafultApi() bool
+	SetHealthFallbackApi(fallbackAPIOn bool)
+	GetHealthFallbackApi() (fallbackAPIOn bool)
 }
 
 type AtomicCacheImp struct {
-	counter       atomic.Int64
 	defaultAPIOn  atomic.Bool
 	fallbackAPIOn atomic.Bool
 }
@@ -25,27 +24,18 @@ func NewCostRoutingThresholdCache() AtomicCache {
 	return &AtomicCacheImp{}
 }
 
-func (c *AtomicCacheImp) Set(value decimal.Decimal) {
-	if value.Cmp(zero) == 1 {
-		intVal := value.Mul(decimal.NewFromInt(100)).IntPart()
-		c.counter.Store(intVal)
-	}
-}
-
-func (c *AtomicCacheImp) Get() decimal.Decimal {
-	intVal := c.counter.Load()
-	if intVal > 0 {
-		return decimal.NewFromInt(intVal).Div(decimal.NewFromInt(100))
-	}
-
-	return zero
-}
-
-func (c *AtomicCacheImp) SetHealthAPIs(defaultAPIOn, fallbackAPIOn bool) {
+func (c *AtomicCacheImp) SetHealthDeafultApi(defaultAPIOn bool) {
 	c.defaultAPIOn.Store(defaultAPIOn)
+}
+
+func (c *AtomicCacheImp) GetHealthDeafultApi() bool {
+	return c.defaultAPIOn.Load()
+}
+
+func (c *AtomicCacheImp) SetHealthFallbackApi(fallbackAPIOn bool) {
 	c.fallbackAPIOn.Store(fallbackAPIOn)
 }
 
-func (c *AtomicCacheImp) GetHealthAPIs() (defaultAPIOn, fallbackAPIOn bool) {
-	return c.defaultAPIOn.Load(), c.fallbackAPIOn.Load()
+func (c *AtomicCacheImp) GetHealthFallbackApi() (fallbackAPIOn bool) {
+	return c.fallbackAPIOn.Load()
 }

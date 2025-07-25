@@ -41,21 +41,18 @@ func (c *CheckHealthPaymentServiceImp) SetStatusPayment(ctx context.Context) err
 	go func() {
 		defer wg.Done()
 		url := fmt.Sprintf("%s/payments/service-health", config.Env.DefaultUrl)
-		log.Printf("url default %s \n", url)
 		healthDefault, errDefault = c.getStatus(ctx, url)
 		if errDefault != nil {
-			log.Printf("Error get health default: %v", errFallback)
+			log.Printf("Error get health DEFAULT: %v", errFallback)
 			return
 		}
 
-		log.Printf("Get health DEFAULT: %v, time: %d", healthDefault.Failing, healthDefault.MinResponseTime)
 		defaultFail = healthDefault != nil && healthDefault.Failing || healthDefault.MinResponseTime > config.Env.LimitTimeHealth
 	}()
 
 	go func() {
 		defer wg.Done()
 		url := fmt.Sprintf("%s/payments/service-health", config.Env.FallbackUrl)
-		log.Printf("url default %s \n", url)
 		healthfallback, errFallback = c.getStatus(ctx, url)
 		if errFallback != nil {
 			log.Printf("Error get health fallback: %v", errFallback)
@@ -63,12 +60,12 @@ func (c *CheckHealthPaymentServiceImp) SetStatusPayment(ctx context.Context) err
 		}
 
 		fallbackFail = healthfallback != nil && healthfallback.Failing || healthfallback.MinResponseTime > config.Env.LimitTimeHealth
-		log.Printf("Get health FALLBACK: %v, time: %d", healthfallback.Failing, healthfallback.MinResponseTime)
 	}()
 
 	wg.Wait()
 
-	c.memoryCache.SetHealthAPIs(defaultFail, fallbackFail)
+	c.memoryCache.SetHealthDeafultApi(defaultFail)
+	c.memoryCache.SetHealthFallbackApi(fallbackFail)
 
 	return nil
 }

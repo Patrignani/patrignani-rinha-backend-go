@@ -19,9 +19,10 @@ func StartWorker(ctx context.Context, name string, interval time.Duration, work 
 				log.Printf("[%s] Encerrando worker", name)
 				return
 			case <-ticker.C:
-				log.Printf("[%s] Executando tarefa...", name)
 				err := work(ctx)
-				log.Printf("[%s] Erro ao executar tarefa: %v", name, err)
+				if err != nil {
+					log.Printf("[%s] Erro ao executar tarefa: %v", name, err)
+				}
 			}
 		}
 	}()

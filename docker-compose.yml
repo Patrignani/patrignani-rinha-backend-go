@@ -10,20 +10,20 @@ services:
       DB_USER: admin
       DB_PASSWORD: admin
       DB_NAME: rinha
-      SCREENING_BUFFER: 40
-      SCREENING_WORKERS: 5
-      HIGH_PRIORITY_BUFFER: 15
-      HIGH_PRIORITY_WORKERS: 8
-      LOW_PRIORITY_BUFFER: 20
-      LOW_PRIORITY_WORKERS: 12
-      WAITING_BUFFER: 100
-      WAITING_WORKERS: 20
-      K_FACTOR: 0.7
+      SCREENING_BUFFER: 400
+      SCREENING_WORKERS: 21
+      HIGH_PRIORITY_BUFFER: 240
+      HIGH_PRIORITY_WORKERS: 26
+      LOW_PRIORITY_BUFFER: 300
+      LOW_PRIORITY_WORKERS: 36
+      WAITING_BUFFER: 800
+      WAITING_WORKERS: 41
       LIMIT_TIME_HEALTH: 3
       DEFAULT_URL: http://payment-processor-default:8080
       FALLBACK_URL: http://payment-processor-fallback:8080
-      WAITING_ROOM_SLEEP_TIME: 400ms
+      WAITING_ROOM_SLEEP_TIME: 200ms
       ENABLE_CHECK_HEALTH_CHECK: true
+      CALC_REDIRECT_CHANCE: 20
     networks:
       - rinha-back
       - payment-processor
@@ -45,20 +45,20 @@ services:
       DB_USER: admin
       DB_PASSWORD: admin
       DB_NAME: rinha
-      SCREENING_BUFFER: 8
-      SCREENING_WORKERS: 1
-      HIGH_PRIORITY_BUFFER: 4
-      HIGH_PRIORITY_WORKERS: 1
-      LOW_PRIORITY_BUFFER: 6
-      LOW_PRIORITY_WORKERS: 2
-      WAITING_BUFFER: 50
-      WAITING_WORKERS: 10
-      K_FACTOR: 1.2
+      SCREENING_BUFFER: 30
+      SCREENING_WORKERS: 5
+      HIGH_PRIORITY_BUFFER: 25
+      HIGH_PRIORITY_WORKERS: 8
+      LOW_PRIORITY_BUFFER: 30
+      LOW_PRIORITY_WORKERS: 10
+      WAITING_BUFFER: 40
+      WAITING_WORKERS: 6
       LIMIT_TIME_HEALTH: 3
       DEFAULT_URL: http://payment-processor-default:8080
       FALLBACK_URL: http://payment-processor-fallback:8080
-      WAITING_ROOM_SLEEP_TIME: 1s
+      WAITING_ROOM_SLEEP_TIME: 200ms
       ENABLE_CHECK_HEALTH_CHECK: false
+      CALC_REDIRECT_CHANCE: 40
     networks:
       - rinha-back
       - payment-processor
@@ -71,7 +71,7 @@ services:
                
   db:
     hostname: storage
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_DB: rinha
       POSTGRES_USER: admin
@@ -100,7 +100,7 @@ services:
       resources:
         limits:
           memory: "100MB"
-          cpus: "0.4"
+          cpus: "0.3"
 
   nginx:
     image: nginx:alpine
@@ -115,7 +115,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.1'
+          cpus: '0.2'
           memory: "30MB"
     networks:
       - rinha-back
