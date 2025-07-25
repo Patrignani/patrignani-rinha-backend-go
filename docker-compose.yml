@@ -3,6 +3,8 @@ services:
     hostname: api1
     container_name: api1
     build: .
+    ports:
+      - "8006:8080"
     depends_on:
       - db
     environment:
@@ -10,14 +12,14 @@ services:
       DB_USER: admin
       DB_PASSWORD: admin
       DB_NAME: rinha
-      SCREENING_BUFFER: 400
-      SCREENING_WORKERS: 21
-      HIGH_PRIORITY_BUFFER: 240
-      HIGH_PRIORITY_WORKERS: 26
-      LOW_PRIORITY_BUFFER: 300
-      LOW_PRIORITY_WORKERS: 36
-      WAITING_BUFFER: 800
-      WAITING_WORKERS: 41
+      SCREENING_BUFFER: 100000
+      SCREENING_WORKERS: 30
+      HIGH_PRIORITY_BUFFER: 50000
+      HIGH_PRIORITY_WORKERS: 35
+      LOW_PRIORITY_BUFFER: 50000
+      LOW_PRIORITY_WORKERS: 35
+      WAITING_BUFFER: 200000
+      WAITING_WORKERS: 40
       LIMIT_TIME_HEALTH: 3
       DEFAULT_URL: http://payment-processor-default:8080
       FALLBACK_URL: http://payment-processor-fallback:8080
@@ -31,13 +33,15 @@ services:
     deploy:
       resources:
         limits:
-          memory: "190MB"
+          memory: "150MB"
           cpus: "0.9"
 
   api2:
     hostname: api2
     container_name: api2
     build: .
+    ports:
+      - "8005:8080"
     depends_on:
       - db
     environment:
@@ -45,14 +49,14 @@ services:
       DB_USER: admin
       DB_PASSWORD: admin
       DB_NAME: rinha
-      SCREENING_BUFFER: 30
-      SCREENING_WORKERS: 5
-      HIGH_PRIORITY_BUFFER: 25
-      HIGH_PRIORITY_WORKERS: 8
-      LOW_PRIORITY_BUFFER: 30
-      LOW_PRIORITY_WORKERS: 10
-      WAITING_BUFFER: 40
-      WAITING_WORKERS: 6
+      SCREENING_BUFFER: 5000
+      SCREENING_WORKERS: 12
+      HIGH_PRIORITY_BUFFER: 4500
+      HIGH_PRIORITY_WORKERS: 20
+      LOW_PRIORITY_BUFFER: 5000
+      LOW_PRIORITY_WORKERS: 20
+      WAITING_BUFFER: 6000
+      WAITING_WORKERS: 30
       LIMIT_TIME_HEALTH: 3
       DEFAULT_URL: http://payment-processor-default:8080
       FALLBACK_URL: http://payment-processor-fallback:8080
@@ -66,7 +70,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: "30MB"
+          memory: "50MB"
           cpus: "0.1"     
                
   db:
@@ -99,7 +103,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: "100MB"
+          memory: "110MB"
           cpus: "0.3"
 
   nginx:
@@ -116,7 +120,7 @@ services:
       resources:
         limits:
           cpus: '0.2'
-          memory: "30MB"
+          memory: "40MB"
     networks:
       - rinha-back
       - payment-processor

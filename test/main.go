@@ -27,7 +27,7 @@ func main() {
 	var totalAmount float64
 	var failedCount int
 
-	concurrency := 80
+	concurrency := 120
 	semaphore := make(chan struct{}, concurrency)
 
 	rand.Seed(time.Now().UnixNano())
